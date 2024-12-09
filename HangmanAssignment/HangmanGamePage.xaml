@@ -5,9 +5,13 @@
              Title="Hangman Game">
 
     <VerticalStackLayout Padding="20">
+        
         <Image x:Name="HangmanImage" 
                HeightRequest="200" 
                WidthRequest="200"/>
+        <Label Text=" Name of Animals" 
+               WidthRequest="200"
+               HeightRequest="200"/>
 
         <Label x:Name="DisplayWordLabel" 
                FontSize="24" 
