@@ -1,5 +1,6 @@
 using Microsoft.Maui.Controls;
 using System;
+using System.Linq;
 
 namespace HangmanAssignment
 {
@@ -11,7 +12,10 @@ namespace HangmanAssignment
         private string guessedLetters;
 
         private readonly string[] imageStages =
-           { "hang1.png", "hang2.png", "hang3.png", "hang4.png", "hang5.png", "hang6.png", "hang7.png", "hang8.png" };
+        {
+            "hang1.png", "hang2.png", "hang3.png", "hang4.png",
+            "hang5.png", "hang6.png", "hang7.png", "hang8.png"
+        };
 
         private readonly string[] wordBank = {
             "ELEPHANT", "TIGER", "CROCODILE", "GIRAFFE", "HIPPOPOTAMUS",
@@ -41,24 +45,66 @@ namespace HangmanAssignment
         {
             incorrectGuesses = 0;
             guessedLetters = string.Empty;
-            displayWord = new string('_', mysteryWord.Length);
+            displayWord = GetInitialDisplayWord(mysteryWord);
+        }
+
+        private string GetInitialDisplayWord(string wordToGuess)
+        {
+            // Create a character array to manipulate
+            char[] displayChars = new char[wordToGuess.Length];
+
+            // Reveal first and last letters
+            displayChars[0] = wordToGuess[0];
+            displayChars[wordToGuess.Length - 1] = wordToGuess[wordToGuess.Length - 1];
+
+            // Fill the rest with underscores
+            for (int i = 1; i < wordToGuess.Length - 1; i++)
+            {
+                displayChars[i] = '_';
+            }
+
+            // Join with spaces to make it more readable
+            return string.Join(" ", displayChars);
         }
 
         private void UpdateGameUI()
         {
-            var wordLabel = this.FindByName<Label>("DisplayWordLabel");
-            wordLabel.Text = GetDisplayWord(mysteryWord, guessedLetters);
+            try
+            {
+                // Find labels safely
+                var wordLabel = this.FindByName<Label>("DisplayWordLabel");
+                var messageLabel = this.FindByName<Label>("MessageLabel");
+                var hangmanImage = this.FindByName<Image>("HangmanImage");
 
-            var hangmanImage = this.FindByName<Image>("HangmanImage");
-            hangmanImage.Source = imageStages[incorrectGuesses];
+                if (wordLabel != null)
+                {
+                    // Display the current state of the word
+                    wordLabel.Text = displayWord;
+                }
 
-            var messageLabel = this.FindByName<Label>("MessageLabel");
-            messageLabel.Text = $"Guessed letters: {guessedLetters}";
+                if (hangmanImage != null)
+                {
+                    // Ensure we don't go out of bounds
+                    hangmanImage.Source = imageStages[Math.Min(incorrectGuesses, imageStages.Length - 1)];
+                }
+
+                if (messageLabel != null)
+                {
+                    messageLabel.Text = $"Guessed letters: {guessedLetters}";
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log any UI update errors
+                System.Diagnostics.Debug.WriteLine($"UI Update Error: {ex.Message}");
+            }
         }
 
         private void OnGuessClicked(object sender, EventArgs e)
         {
             var inputField = this.FindByName<Entry>("GuessInput");
+            if (inputField == null) return;
+
             string guess = inputField.Text?.ToUpper();
             if (IsValidGuess(guess))
             {
@@ -73,18 +119,24 @@ namespace HangmanAssignment
 
         private bool IsValidGuess(string guess)
         {
-            return !string.IsNullOrEmpty(guess) && guess.Length == 1 && char.IsLetter(guess[0]);
+            return !string.IsNullOrEmpty(guess) &&
+                   guess.Length == 1 &&
+                   char.IsLetter(guess[0]);
         }
 
         private void HandleGuess(char guess)
         {
+            // Prevent duplicate guesses
             if (guessedLetters.Contains(guess))
             {
                 DisplayMessage("You already guessed that letter.");
                 return;
             }
 
+            // Add the guess to guessed letters
             guessedLetters += guess;
+
+            // Process the guess
             bool isCorrect = ProcessGuess(guess);
 
             if (!isCorrect)
@@ -92,6 +144,7 @@ namespace HangmanAssignment
                 incorrectGuesses++;
             }
 
+            // Check win/lose conditions
             if (CheckWin())
             {
                 DisplayMessage($"Congratulations! You survived! The word was: {mysteryWord}");
@@ -111,7 +164,7 @@ namespace HangmanAssignment
         private bool ProcessGuess(char guess)
         {
             bool isCorrect = false;
-            char[] displayChars = displayWord.ToCharArray();
+            char[] displayChars = displayWord.Replace(" ", "").ToCharArray();
 
             for (int i = 0; i < mysteryWord.Length; i++)
             {
@@ -122,45 +175,33 @@ namespace HangmanAssignment
                 }
             }
 
-            displayWord = new string(displayChars);
+            // Recreate the display word with spaces
+            displayWord = string.Join(" ", displayChars);
             return isCorrect;
-        }
-
-        private string GetDisplayWord(string wordToGuess, string guessedLetters)
-        {
-            char[] displayWord = new char[wordToGuess.Length];
-
-            for (int i = 0; i < wordToGuess.Length; i++)
-            {
-                if (guessedLetters.Contains(wordToGuess[i]))
-                {
-                    displayWord[i] = wordToGuess[i];
-                }
-                else
-                {
-                    displayWord[i] = '_';
-                }
-            }
-
-            // Join the characters with a space to make it readable, e.g., "k _ k _ t _ o"
-            return string.Join(" ", displayWord);
         }
 
         private bool CheckWin()
         {
+            // Remove spaces and compare directly
             return displayWord.Replace(" ", "") == mysteryWord;
         }
 
         private void EndGame()
         {
             var inputField = this.FindByName<Entry>("GuessInput");
-            inputField.IsEnabled = false;
+            if (inputField != null)
+            {
+                inputField.IsEnabled = false;
+            }
         }
 
         private void DisplayMessage(string message)
         {
             var messageLabel = this.FindByName<Label>("MessageLabel");
-            messageLabel.Text = message;
+            if (messageLabel != null)
+            {
+                messageLabel.Text = message;
+            }
         }
     }
 }
